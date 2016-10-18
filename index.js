@@ -12,6 +12,8 @@ var _ 			= require('lodash'),
 	path 		= require('path'),
 	spawn 		= require('child_process').spawn;
 
+mongoose.Promise = global.Promise;
+
 function Seeder() {
 	this.connected = false;
 }
