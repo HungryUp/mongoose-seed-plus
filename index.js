@@ -4,6 +4,7 @@
  * Module dependencies.
  **/
 var _ 			= require('lodash'),
+	co	= require('co'),
 	fs 			= require('fs'),
 	async 		= require('async'),
 	mongoose 	= require('mongoose'),
@@ -148,33 +149,25 @@ Seeder.prototype.populateModels = function(seedData) {
 			return;
 		}
 
-		// Get a count of all the documents so we can close the connection when its done
-		var count = 0;
-		for (var i = 0; i < seedData.length; i++) {
-			count += seedData[i].documents.length;
-		}
-
-		// Populate each model
-		seedData.forEach(function(entry, i) {
-			var Model = mongoose.model(entry.model);
-			entry.documents.forEach(function(document, j) {
-				Model.create(document, function(err) {
-					if (err) {
-						console.error(chalk.red('Error creating document [' + j + '] of ' + entry.model + ' model'));
-						console.error(chalk.red('Error: ' + err.message));
-						return;
-					}
-					console.log('Successfully created document [' + j + '] of ' + entry.model + ' model');
-
-					// decrement count and close connection if all done
-					count--;
-					if (count === 0) {
-						mongoose.connection.close();
-						console.log(chalk.green('Successfully populate mongoose-seed'));
-						process.exit();
-					}
-				});
-			});
+		co(function*(){
+			for (const entry of seedData) {
+				var Model = mongoose.model(entry.model);
+				let j = 0;
+				for (const document of entry.documents) {
+					yield Model.create(document, function(err) {
+						if (err) {
+							console.error(chalk.red('Error creating document [' + j + '] of ' + entry.model + ' model'));
+							console.error(chalk.red('Error: ' + err.message));
+							return;
+						}
+						console.log('Successfully created document [' + j + '] of ' + entry.model + ' model');
+					});
+					j++;
+				}
+			}
+			mongoose.connection.close();
+			console.log(chalk.green('Successfully populate mongoose-seed'));
+			process.exit();
 		});
 
 	});
